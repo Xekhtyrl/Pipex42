@@ -6,7 +6,7 @@
 /*   By: lvodak <lvodak@student.s19.be>             +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/22 19:44:55 by lvodak            #+#    #+#             */
-/*   Updated: 2024/02/13 19:27:47 by lvodak           ###   ########.fr       */
+/*   Updated: 2024/10/06 20:27:50 by lvodak           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,16 +20,14 @@ void	ex_heredoc(int p_fd[2], char *limiter)
 {
 	char	*temp;
 
-	close(p_fd[0]);
 	while (1)
 	{
 		temp = get_next_line(0);
 		if (!ft_memcmp(temp, limiter, ft_strlen(temp) - 1))
-			return (free(temp), exit(EXIT_SUCCESS));
-		ft_putstr_fd(temp, p_fd[1]);
+			return (free(temp));
+		ft_putstr_fd(temp, p_fd[0]);
 		free(temp);
 	}
-	exit(EXIT_FAILURE);
 }
 
 void	execute_pipes(t_pipes pipes, int *fds, char **envp, int prev_fd)
@@ -51,13 +49,11 @@ void	execute_pipes(t_pipes pipes, int *fds, char **envp, int prev_fd)
 			if (execve(pipes.pipe[i].path, pipes.pipe[i].cmd, envp) == -1)
 				return (perror("command not executed"), exit(EXIT_FAILURE));
 		}
-		if (i != 0)
+		if (prev_fd)
 			close(prev_fd);
 		if (i != pipes.p_nb - 1)
 			close(p_fd[1]);
 		prev_fd = p_fd[0];
-		if (pipes.lim)
-			wait(0);
 	}
 }
 
@@ -68,8 +64,11 @@ t_pipes	ft_here_doc(char **argv, int argc, char **envp, int (*fd_inout)[2])
 	pipes = pipe_struct(argv + 1, argc - 4, (char **)envp, 1);
 	if (!pipes.pipe)
 		return ((t_pipes){0, 0, 0, 0});
-	*fd_inout[0] = 0;
-	(*fd_inout)[1] = open(argv[argc - 1], O_RDWR | O_CREAT | O_APPEND, 0777);
+	*fd_inout[0] = open("/tmp/here_doc.tmp", O_RDWR | O_CREAT | O_TRUNC, 0644);
+	ex_heredoc(*fd_inout, pipes.lim);
+	close(*fd_inout[0]);
+	*fd_inout[0] = open("/tmp/here_doc.tmp", O_RDWR, 0644);
+	(*fd_inout)[1] = open(argv[argc - 1], O_RDWR | O_CREAT | O_APPEND, 0644);
 	return (pipes);
 }
 
@@ -81,7 +80,7 @@ t_pipes	ft_no_here_doc(char **argv, int argc, char **envp, int (*fd_inout)[2])
 	if (!pipes.pipe)
 		return ((t_pipes){0, 0, 0, 0});
 	(*fd_inout)[0] = open(argv[1], O_RDWR);
-	(*fd_inout)[1] = open(argv[argc - 1], O_WRONLY | O_TRUNC | O_CREAT, 0777);
+	(*fd_inout)[1] = open(argv[argc - 1], O_WRONLY | O_TRUNC | O_CREAT, 0644);
 	return (pipes);
 }
 
@@ -92,7 +91,7 @@ int	main(int argc, char *argv[], char const *envp[])
 	int		fd_inout[2];
 	t_pipes	pipes;
 
-	if (argc < 5)
+	if (argc < 5 || (ft_strncmp(argv[1], "here_doc", 8) == 0 && argc < 6))
 		return (ft_putstr_fd("Error: invalid arguments number\n", 2), 0);
 	if (ft_strncmp(argv[1], "here_doc", 8) == 0)
 		pipes = ft_here_doc(argv, argc, (char **)envp, &fd_inout);
@@ -101,12 +100,9 @@ int	main(int argc, char *argv[], char const *envp[])
 	prev_fd = fd_inout[0];
 	if (fd_inout[0] == -1 || fd_inout[1] == -1)
 		return (perror("open"), exit(EXIT_FAILURE), 0);
-	if (ft_strncmp(argv[1], "here_doc", 8) == 0)
-		execute_pipes(pipes, fd_inout, (char **)envp, -1);
-	else
-		execute_pipes(pipes, fd_inout, (char **)envp, prev_fd);
+	execute_pipes(pipes, fd_inout, (char **)envp, prev_fd);
 	i = -1;
 	while (++i < pipes.p_nb)
-		waitpid(pipes.id[i], &prev_fd, 0);
+		wait(&prev_fd);
 	free_pipes(&pipes);
 }

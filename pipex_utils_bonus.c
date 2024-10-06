@@ -6,7 +6,7 @@
 /*   By: lvodak <lvodak@student.s19.be>             +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/30 21:04:49 by lvodak            #+#    #+#             */
-/*   Updated: 2024/02/13 20:57:19 by lvodak           ###   ########.fr       */
+/*   Updated: 2024/10/06 20:39:30 by lvodak           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,24 +66,24 @@ t_pipes	pipe_struct(char **argv, int child_nbr, char **envp, int here_doc)
 	char		**cmd;
 	int			i;
 
-	i = 0;
-	pipes = (t_pipes){child_nbr, 0, 0, 0};
+	i = -1;
+	pipes = (t_pipes){child_nbr, 0, malloc(sizeof(pid_t) * child_nbr), 0};
+	if (!pipes.id)
+		return ((t_pipes){0, 0, 0, NULL});
 	if (here_doc)
 		pipes = (t_pipes){child_nbr, argv[1], 0, 0};
 	child = malloc(sizeof(t_pipe_list) * child_nbr);
-	pipes.id = malloc(sizeof(pid_t) * child_nbr);
-	pipes.pipe = child;
-	if (!child || !pipes.id)
+	if (!child)
 		return ((t_pipes){0, 0, 0, child});
-	while (i < child_nbr)
+	pipes.pipe = child;
+	while (++i < child_nbr)
 	{
 		cmd = ft_split(argv[i + 2], ' ');
 		child[i] = (t_pipe_list){cmd[0], cmd};
-		if (access(cmd[0], F_OK))
+		if (!access(cmd[0], W_OK) || access(cmd[0], F_OK))
 			child[i] = (t_pipe_list){access_path(cmd[0], envp), cmd};
 		if (!child[i].cmd)
 			return (free(pipes.id), free(child), (t_pipes){0, 0, 0, 0});
-		i++;
 	}
 	return (pipes);
 }
@@ -92,20 +92,19 @@ void	cls_fd(int prev_fd, int *p_fd, int *fd_inout, t_inf info)
 {
 	if (close(p_fd[0]) == -1)
 		return (perror("close1"), exit(EXIT_FAILURE));
-	if ((info.i != info.last || prev_fd == -1))
+	if ((info.i != info.last))
 		if (close(p_fd[1]) == -1)
 			return (perror("close2"), exit(EXIT_FAILURE));
-	if ((prev_fd != -1 || (prev_fd == -1 && info.i != info.last)))
-		if (close(fd_inout[1]) == -1)
-			return (perror("close3"), exit(EXIT_FAILURE));
-	if (info.i != info.last)
-		if (close(fd_inout[0]) == -1)
+	if (close(fd_inout[1]) == -1)
+		return (perror("close3"), exit(EXIT_FAILURE));
+	if (info.i != info.last && prev_fd > 0)
+		if (close(prev_fd) == -1)
 			return (perror("close4"), exit(EXIT_FAILURE));
 }
 
 void	dup_fds(int prev_fd, int p_fd[2], int *fd_inout, t_inf info)
 {
-	if (prev_fd != -1 && prev_fd != STDIN_FILENO)
+	if (prev_fd > 0 && prev_fd != STDIN_FILENO)
 		if (dup2(prev_fd, STDIN_FILENO) == -1)
 			return (perror("dup2"), exit(EXIT_FAILURE));
 	if (info.i == info.last)
@@ -114,7 +113,5 @@ void	dup_fds(int prev_fd, int p_fd[2], int *fd_inout, t_inf info)
 	if (info.i != info.last)
 		if (dup2(p_fd[1], STDOUT_FILENO) == -1)
 			return (perror("dup2"), exit(EXIT_FAILURE));
-	if (prev_fd == -1)
-		ex_heredoc(p_fd, info.lim);
 	cls_fd(prev_fd, p_fd, fd_inout, info);
 }

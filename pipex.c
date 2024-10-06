@@ -6,7 +6,7 @@
 /*   By: lvodak <lvodak@student.s19.be>             +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/22 19:44:55 by lvodak            #+#    #+#             */
-/*   Updated: 2024/02/12 22:51:37 by lvodak           ###   ########.fr       */
+/*   Updated: 2024/10/06 20:41:04 by lvodak           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 
 void	cls_fd(int prev_fd, int *p_fd, int *fd_inout, t_inf info)
 {
+	(void)prev_fd;
 	if (close(p_fd[0]) == -1)
 		return (perror("close1"), exit(EXIT_FAILURE));
 	if ((info.i != info.last))
@@ -80,7 +81,7 @@ t_pipes	ft_no_here_doc(char **argv, int argc, char **envp, int (*fd_inout)[2])
 	if (!pipes.pipe)
 		return ((t_pipes){0, 0, 0});
 	(*fd_inout)[0] = open(argv[1], O_RDWR);
-	(*fd_inout)[1] = open(argv[argc - 1], O_WRONLY | O_TRUNC | O_CREAT, 0777);
+	(*fd_inout)[1] = open(argv[argc - 1], O_WRONLY | O_TRUNC | O_CREAT, 0644);
 	return (pipes);
 }
 

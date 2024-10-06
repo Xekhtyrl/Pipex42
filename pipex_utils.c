@@ -6,7 +6,7 @@
 /*   By: lvodak <lvodak@student.s19.be>             +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/01/30 21:04:49 by lvodak            #+#    #+#             */
-/*   Updated: 2024/02/13 20:57:21 by lvodak           ###   ########.fr       */
+/*   Updated: 2024/04/01 23:59:51 by lvodak           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,7 +77,7 @@ t_pipes	pipe_struct(char **argv, int child_nbr, char **envp)
 	{
 		cmd = ft_split(argv[i + 2], ' ');
 		child[i] = (t_pipe_list){cmd[0], cmd};
-		if (access(cmd[0], F_OK))
+		if (!access(cmd[0], W_OK) || access(cmd[0], F_OK))
 			child[i] = (t_pipe_list){access_path(cmd[0], envp), cmd};
 		if (!child[i].cmd)
 			return (free(pipes.id), free(child), (t_pipes){0, 0, 0});
